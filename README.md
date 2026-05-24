@@ -1,16 +1,19 @@
 # 📈 StockView — IDX Candlestick Chart
 
-Real-time stock candlestick chart untuk saham IDX menggunakan Go + TradingView Lightweight Charts.
+![StockView Screenshot 1](ss1.png)
+![StockView Screenshot 2](ss2.png)
+
+Real-time stock candlestick chart untuk saham menggunakan Go + TradingView Lightweight Charts.
 
 ## Fitur
 
 - **Candlestick Chart** interaktif dengan library TradingView Lightweight Charts v4
 - **5 Saham IDX**: BBCA, TLKM, ASII, BMRI, GOTO
-- **Live Update** setiap 3 detik — background goroutine mensimulasikan pergerakan harga
+- **Live Update** setiap 1 detik — background goroutine mensimulasikan pergerakan harga
 - **Multiple Chart Types**: Candlestick, OHLC Bar, Area
 - **Timeframe Filter**: 1D, 1W, 1M, 3M, 6M, 1Y, All
 - **Volume Histogram** di bagian bawah chart
-- **Crosshair Tooltip** dengan detail OHLCV
+- **Crosshair Tooltip & Click Modal** dengan detail OHLCV
 - **Ticker Bar** berjalan otomatis di header
 - **Dark Theme** profesional ala terminal trading
 
@@ -56,8 +59,8 @@ Buka browser: **http://localhost:8080**
 ## Arsitektur
 
 - **In-memory store** dengan `sync.RWMutex` untuk thread safety
-- **Background goroutine** berjalan setiap 3 detik mensimulasikan pergerakan harga
-- **SSE-less polling**: frontend polling `/api/latest` setiap 3 detik
+- **Background goroutine** berjalan setiap 1 detik mensimulasikan pergerakan harga
+- **SSE-less polling**: frontend polling `/api/latest` setiap 1 detik
 - Data historis 200 hari dibuat saat startup dengan random walk
 
 ## Catatan
