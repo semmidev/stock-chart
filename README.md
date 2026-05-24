@@ -1,4 +1,4 @@
-# 📈 StockView — IDX Candlestick Chart
+# StockView — Candlestick Chart
 
 ![StockView Screenshot 1](ss1.png)
 ![StockView Screenshot 2](ss2.png)
