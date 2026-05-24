@@ -610,6 +610,35 @@
       }
     }
 
+    /* ─── Modal ────────────────────────────────────────────────────── */
+    .modal-backdrop {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px);
+      z-index: 100; display: flex; align-items: center; justify-content: center;
+      opacity: 0; pointer-events: none; transition: opacity 0.2s;
+    }
+    .modal-backdrop.show { opacity: 1; pointer-events: auto; }
+    .modal-content {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+      width: 320px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); overflow: hidden;
+      transform: translateY(20px); transition: transform 0.2s;
+    }
+    .modal-backdrop.show .modal-content { transform: translateY(0); }
+    .modal-header {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 16px 20px; border-bottom: 1px solid var(--border); background: var(--surface2);
+    }
+    .modal-title { font-weight: 600; font-size: 14px; }
+    .modal-close {
+      background: none; border: none; color: var(--muted); font-size: 20px;
+      cursor: pointer; line-height: 1; padding: 0; margin: 0; transition: color 0.15s;
+    }
+    .modal-close:hover { color: var(--text); }
+    .modal-body { padding: 20px; }
+    .mb-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .mb-row:last-child { margin-bottom: 0; }
+    .mb-label { color: var(--muted); font-size: 12px; }
+    .mb-val { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 500; }
+
     /* ─── Responsive ───────────────────────────────────────────────── */
     @media (max-width: 900px) {
       .body {
@@ -625,6 +654,24 @@
 
 <body>
   <div class="app">
+
+  <!-- ── Modal ──────────────────────────────────────────────────── -->
+  <div class="modal-backdrop" id="candleModal" onclick="closeModal()">
+    <div class="modal-content" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <div class="modal-title">Candle Details</div>
+        <button class="modal-close" onclick="closeModal()">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-row"><span class="mb-label">Date/Time</span><span class="mb-val" id="mdlTime"></span></div>
+        <div class="mb-row"><span class="mb-label">Open</span><span class="mb-val" id="mdlOpen"></span></div>
+        <div class="mb-row"><span class="mb-label">High</span><span class="mb-val" id="mdlHigh"></span></div>
+        <div class="mb-row"><span class="mb-label">Low</span><span class="mb-val" id="mdlLow"></span></div>
+        <div class="mb-row"><span class="mb-label">Close</span><span class="mb-val" id="mdlClose"></span></div>
+        <div class="mb-row"><span class="mb-label">Volume</span><span class="mb-val" id="mdlVol"></span></div>
+      </div>
+    </div>
+  </div>
 
     <!-- ── Topbar ─────────────────────────────────────────────────── -->
     <header class="topbar">
@@ -911,6 +958,32 @@
         document.getElementById('olVol').textContent = vd ? fmtVol(vd.value) : '—';
       });
 
+      // Click tooltip
+      chart.subscribeClick(param => {
+        if (!param || !param.time || !param.seriesData) return;
+        const d = param.seriesData.get(candleSeries);
+        if (!d) return;
+
+        const vd = param.seriesData.get(volumeSeries);
+        const vol = vd ? vd.value : 0;
+
+        const dateStr = new Date(param.time * 1000).toLocaleString('id-ID');
+        
+        const open = d.open !== undefined ? d.open : d.value;
+        const high = d.high !== undefined ? d.high : d.value;
+        const low = d.low !== undefined ? d.low : d.value;
+        const close = d.close !== undefined ? d.close : d.value;
+
+        document.getElementById('mdlTime').textContent = dateStr;
+        document.getElementById('mdlOpen').textContent = fmt(open);
+        document.getElementById('mdlHigh').textContent = fmt(high);
+        document.getElementById('mdlLow').textContent = fmt(low);
+        document.getElementById('mdlClose').textContent = fmt(close);
+        document.getElementById('mdlVol').textContent = fmt(vol); // Show exact volume in modal
+
+        document.getElementById('candleModal').classList.add('show');
+      });
+
       // Resize observer (fallback, although autoSize is enabled)
       const ro = new ResizeObserver(() => {
         if (container.clientWidth > 0 && container.clientHeight > 0) {
@@ -1126,6 +1199,10 @@
         window.event.currentTarget.classList.add('active');
       }
       renderChart();
+    }
+
+    function closeModal() {
+      document.getElementById('candleModal').classList.remove('show');
     }
 
     // ─── Formatters ──────────────────────────────────────────────────────────────
