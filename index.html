@@ -1,0 +1,1162 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>IDX Stock Chart — StockView</title>
+  <script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
+  <style>
+    /* ─── Reset & Base ─────────────────────────────────────────────── */
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --surface2: #1c2230;
+      --border: #21262d;
+      --text: #e6edf3;
+      --muted: #8b949e;
+      --green: #26a69a;
+      --red: #ef5350;
+      --green-glow: #26a69a33;
+      --red-glow: #ef535033;
+      --accent: #388bfd;
+      --accent2: #58a6ff;
+      --gold: #e3b341;
+      --font: 'Inter', system-ui, sans-serif;
+    }
+
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+    html,
+    body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      overflow: hidden;
+    }
+
+    /* ─── Layout ───────────────────────────────────────────────────── */
+    .app {
+      display: grid;
+      grid-template-rows: 56px 1fr;
+      height: 100vh;
+    }
+
+    /* ─── Topbar ───────────────────────────────────────────────────── */
+    .topbar {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 0 20px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      position: relative;
+      z-index: 10;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 700;
+      font-size: 16px;
+      color: var(--text);
+      text-decoration: none;
+      white-space: nowrap;
+    }
+
+    .logo-icon {
+      width: 28px;
+      height: 28px;
+      background: linear-gradient(135deg, var(--accent), #6e40c9);
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+    }
+
+    .logo-sub {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 400;
+    }
+
+    .topbar-divider {
+      width: 1px;
+      height: 28px;
+      background: var(--border);
+      flex-shrink: 0;
+    }
+
+    .ticker-scroll {
+      flex: 1;
+      overflow: hidden;
+      position: relative;
+      mask-image: linear-gradient(to right, transparent, black 5%, black 95%, transparent);
+    }
+
+    .ticker-track {
+      display: flex;
+      gap: 0;
+      animation: ticker 40s linear infinite;
+      white-space: nowrap;
+    }
+
+    .ticker-track:hover {
+      animation-play-state: paused;
+    }
+
+    @keyframes ticker {
+      from {
+        transform: translateX(0);
+      }
+
+      to {
+        transform: translateX(-50%);
+      }
+    }
+
+    .ticker-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0 20px;
+      cursor: pointer;
+      border-right: 1px solid var(--border);
+      transition: background .15s;
+    }
+
+    .ticker-item:hover {
+      background: var(--surface2);
+    }
+
+    .ticker-sym {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .ticker-price {
+      font-size: 12px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .ticker-chg {
+      font-size: 11px;
+      font-weight: 500;
+    }
+
+    .market-status {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 6px var(--green);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        opacity: 1;
+      }
+
+      50% {
+        opacity: .4;
+      }
+    }
+
+    /* ─── Main Body ────────────────────────────────────────────────── */
+    .body {
+      display: grid;
+      grid-template-columns: 260px 1fr;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    /* ─── Sidebar ──────────────────────────────────────────────────── */
+    .sidebar {
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .sidebar-header {
+      padding: 14px 16px 10px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .stock-list {
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    .stock-list::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    .stock-list::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .stock-list::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 4px;
+    }
+
+    .stock-item {
+      padding: 12px 16px;
+      cursor: pointer;
+      border-bottom: 1px solid var(--border);
+      transition: background .15s;
+      position: relative;
+    }
+
+    .stock-item:hover {
+      background: var(--surface2);
+    }
+
+    .stock-item.active {
+      background: var(--surface2);
+    }
+
+    .stock-item.active::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 3px;
+      background: var(--accent);
+      border-radius: 0 2px 2px 0;
+    }
+
+    .si-row1 {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 4px;
+    }
+
+    .si-sym {
+      font-size: 13px;
+      font-weight: 600;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .si-price {
+      font-size: 13px;
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 500;
+    }
+
+    .si-row2 {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .si-name {
+      font-size: 11px;
+      color: var(--muted);
+      max-width: 140px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .si-chg {
+      font-size: 11px;
+      font-weight: 500;
+    }
+
+    .up {
+      color: var(--green);
+    }
+
+    .down {
+      color: var(--red);
+    }
+
+    /* ─── Main Content ─────────────────────────────────────────────── */
+    .content {
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      overflow: hidden;
+    }
+
+    /* ─── Chart Header ─────────────────────────────────────────────── */
+    .chart-header {
+      padding: 14px 20px 12px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+
+    .ch-top {
+      display: flex;
+      align-items: flex-start;
+      gap: 20px;
+      margin-bottom: 10px;
+    }
+
+    .ch-info {
+      flex: 1;
+    }
+
+    .ch-sym {
+      font-size: 20px;
+      font-weight: 700;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--text);
+      line-height: 1;
+    }
+
+    .ch-name {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+
+    .ch-price-block {
+      text-align: right;
+    }
+
+    .ch-price {
+      font-size: 28px;
+      font-weight: 700;
+      font-family: 'JetBrains Mono', monospace;
+      line-height: 1;
+    }
+
+    .ch-chg {
+      font-size: 13px;
+      font-weight: 500;
+      margin-top: 3px;
+    }
+
+    .ch-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .ch-badge.up {
+      background: var(--green-glow);
+      color: var(--green);
+    }
+
+    .ch-badge.down {
+      background: var(--red-glow);
+      color: var(--red);
+    }
+
+    .ch-stats {
+      display: flex;
+      gap: 0;
+    }
+
+    .stat-item {
+      padding: 0 16px;
+      border-right: 1px solid var(--border);
+    }
+
+    .stat-item:first-child {
+      padding-left: 0;
+    }
+
+    .stat-label {
+      font-size: 10px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      margin-bottom: 2px;
+    }
+
+    .stat-val {
+      font-size: 12px;
+      font-weight: 500;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* ─── Toolbar ──────────────────────────────────────────────────── */
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 20px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface2);
+    }
+
+    .tf-group {
+      display: flex;
+      gap: 2px;
+    }
+
+    .tf-btn {
+      padding: 4px 10px;
+      border-radius: 5px;
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all .15s;
+      font-family: var(--font);
+    }
+
+    .tf-btn:hover {
+      background: var(--border);
+      color: var(--text);
+    }
+
+    .tf-btn.active {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .toolbar-sep {
+      width: 1px;
+      height: 20px;
+      background: var(--border);
+    }
+
+    .chart-type-group {
+      display: flex;
+      gap: 2px;
+    }
+
+    .ct-btn {
+      padding: 4px 10px;
+      border-radius: 5px;
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      font-size: 12px;
+      cursor: pointer;
+      transition: all .15s;
+      font-family: var(--font);
+      font-weight: 500;
+    }
+
+    .ct-btn:hover {
+      background: var(--border);
+      color: var(--text);
+    }
+
+    .ct-btn.active {
+      background: var(--surface);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    .toolbar-right {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .live-badge {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11px;
+      color: var(--green);
+      font-weight: 500;
+    }
+
+    .live-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--green);
+      animation: pulse 1.5s infinite;
+    }
+
+    /* ─── Chart Area ───────────────────────────────────────────────── */
+    .chart-area {
+      position: relative;
+      overflow: hidden;
+      background: var(--bg);
+      display: flex;
+      flex-direction: column;
+      min-height: 400px;
+    }
+
+    #chart {
+      flex: 1;
+      width: 100%;
+      height: 100%;
+      min-height: 400px;
+    }
+
+    .chart-overlay {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      background: rgba(22, 27, 34, .85);
+      backdrop-filter: blur(8px);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 11px;
+      color: var(--muted);
+      pointer-events: none;
+      min-width: 180px;
+      display: none;
+    }
+
+    .chart-overlay.show {
+      display: block;
+    }
+
+    .ol-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 3px;
+    }
+
+    .ol-label {}
+
+    .ol-val {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 500;
+    }
+
+    /* ─── Volume / Bottom ──────────────────────────────────────────── */
+    .chart-bottom {
+      border-top: 1px solid var(--border);
+      background: var(--surface);
+      padding: 8px 20px;
+      font-size: 11px;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .bottom-stat {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .bottom-label {
+      color: var(--muted);
+    }
+
+    .bottom-val {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 500;
+      color: var(--text);
+    }
+
+    /* ─── Loading ──────────────────────────────────────────────────── */
+    .loading {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg);
+      z-index: 5;
+    }
+
+    .loading-spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    /* ─── Responsive ───────────────────────────────────────────────── */
+    @media (max-width: 900px) {
+      .body {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar {
+        display: none;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="app">
+
+    <!-- ── Topbar ─────────────────────────────────────────────────── -->
+    <header class="topbar">
+      <a class="logo" href="#">
+        <div class="logo-icon">📈</div>
+        <div>
+          <div>StockView</div>
+          <div class="logo-sub">IDX Real-time</div>
+        </div>
+      </a>
+      <div class="topbar-divider"></div>
+
+      <div class="ticker-scroll">
+        <div class="ticker-track" id="tickerTrack">
+          {{range .Stocks}}
+          <div class="ticker-item" onclick="selectStock('{{.Symbol}}')">
+            <span class="ticker-sym">{{.Symbol}}</span>
+            <span class="ticker-price" id="tp-{{.Symbol}}">{{printf "%.0f" .LastPrice}}</span>
+            <span class="ticker-chg {{if ge .ChangePct 0.0}}up{{else}}down{{end}}" id="tc-{{.Symbol}}">
+              {{if ge .ChangePct 0.0}}▲{{else}}▼{{end}} {{printf "%.2f" .ChangePct}}%
+            </span>
+          </div>
+          {{end}}
+          <!-- Duplicate for seamless loop -->
+          {{range .Stocks}}
+          <div class="ticker-item" onclick="selectStock('{{.Symbol}}')">
+            <span class="ticker-sym">{{.Symbol}}</span>
+            <span class="ticker-price" id="tp2-{{.Symbol}}">{{printf "%.0f" .LastPrice}}</span>
+            <span class="ticker-chg {{if ge .ChangePct 0.0}}up{{else}}down{{end}}" id="tc2-{{.Symbol}}">
+              {{if ge .ChangePct 0.0}}▲{{else}}▼{{end}} {{printf "%.2f" .ChangePct}}%
+            </span>
+          </div>
+          {{end}}
+        </div>
+      </div>
+
+      <div class="market-status">
+        <div class="status-dot"></div>
+        <span>IDX Live</span>
+      </div>
+    </header>
+
+    <!-- ── Body ──────────────────────────────────────────────────── -->
+    <div class="body">
+
+      <!-- Sidebar -->
+      <aside class="sidebar">
+        <div class="sidebar-header">Watchlist</div>
+        <div class="stock-list" id="stockList">
+          {{range .Stocks}}
+          <div class="stock-item {{if eq .Symbol $.DefaultSymbol}}active{{end}}" id="si-{{.Symbol}}"
+            onclick="selectStock('{{.Symbol}}')">
+            <div class="si-row1">
+              <span class="si-sym">{{.Symbol}}</span>
+              <span class="si-price {{if ge .ChangePct 0.0}}up{{else}}down{{end}}" id="sip-{{.Symbol}}">
+                {{printf "%.0f" .LastPrice}}
+              </span>
+            </div>
+            <div class="si-row2">
+              <span class="si-name">{{.Name}}</span>
+              <span class="si-chg {{if ge .ChangePct 0.0}}up{{else}}down{{end}}" id="sic-{{.Symbol}}">
+                {{if ge .ChangePct 0.0}}+{{end}}{{printf "%.2f" .ChangePct}}%
+              </span>
+            </div>
+          </div>
+          {{end}}
+        </div>
+      </aside>
+
+      <!-- Main Content -->
+      <main class="content">
+
+        <!-- Chart Header -->
+        <div class="chart-header">
+          <div class="ch-top">
+            <div class="ch-info">
+              <div class="ch-sym" id="hSym">{{.DefaultSymbol}}</div>
+              <div class="ch-name" id="hName">Loading...</div>
+            </div>
+            <div class="ch-price-block">
+              <div class="ch-price up" id="hPrice">—</div>
+              <div class="ch-chg">
+                <span id="hChgAmt"></span>
+                <span class="ch-badge up" id="hChgBadge"></span>
+              </div>
+            </div>
+          </div>
+          <div class="ch-stats">
+            <div class="stat-item">
+              <div class="stat-label">Open</div>
+              <div class="stat-val" id="hOpen">—</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-label">High</div>
+              <div class="stat-val up" id="hHigh">—</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-label">Low</div>
+              <div class="stat-val down" id="hLow">—</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-label">Volume</div>
+              <div class="stat-val" id="hVol">—</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-label">Mkt Cap</div>
+              <div class="stat-val" id="hMktCap">—</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-label">P/E</div>
+              <div class="stat-val" id="hPE">—</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-label">52W High</div>
+              <div class="stat-val up" id="h52H">—</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-label">52W Low</div>
+              <div class="stat-val down" id="h52L">—</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Toolbar -->
+        <div class="toolbar">
+          <div class="tf-group">
+            <button class="tf-btn" onclick="setTimeframe('1D')">1D</button>
+            <button class="tf-btn active" onclick="setTimeframe('1W')">1W</button>
+            <button class="tf-btn" onclick="setTimeframe('1M')">1M</button>
+            <button class="tf-btn" onclick="setTimeframe('3M')">3M</button>
+            <button class="tf-btn" onclick="setTimeframe('6M')">6M</button>
+            <button class="tf-btn" onclick="setTimeframe('1Y')">1Y</button>
+            <button class="tf-btn" onclick="setTimeframe('ALL')">All</button>
+          </div>
+          <div class="toolbar-sep"></div>
+          <div class="chart-type-group">
+            <button class="ct-btn active" onclick="setChartType('candlestick', this)">🕯 Candle</button>
+            <button class="ct-btn" onclick="setChartType('bar', this)">▬ OHLC</button>
+            <button class="ct-btn" onclick="setChartType('area', this)">◢ Area</button>
+          </div>
+          <div class="toolbar-right">
+            <div class="live-badge">
+              <div class="live-dot"></div>
+              <span id="lastUpdateTime">Live</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Chart -->
+        <div class="chart-area">
+          <div class="loading" id="loadingOverlay">
+            <div class="loading-spinner"></div>
+          </div>
+          <div id="chart"></div>
+          <div class="chart-overlay" id="chartOverlay">
+            <div class="ol-row"><span class="ol-label">Open</span><span class="ol-val" id="olOpen">—</span></div>
+            <div class="ol-row"><span class="ol-label">High</span><span class="ol-val up" id="olHigh">—</span></div>
+            <div class="ol-row"><span class="ol-label">Low</span><span class="ol-val down" id="olLow">—</span></div>
+            <div class="ol-row"><span class="ol-label">Close</span><span class="ol-val" id="olClose">—</span></div>
+            <div class="ol-row"><span class="ol-label">Volume</span><span class="ol-val" id="olVol">—</span></div>
+          </div>
+        </div>
+
+        <!-- Bottom bar -->
+        <div class="chart-bottom">
+          <div class="bottom-stat">
+            <span class="bottom-label">IDX Composite</span>
+            <span class="bottom-val" id="bIdxComp">7,342.18</span>
+            <span class="up" style="font-size:11px" id="bIdxChg">+0.42%</span>
+          </div>
+          <div class="bottom-stat">
+            <span class="bottom-label">Last Update:</span>
+            <span class="bottom-val" id="bTime">—</span>
+          </div>
+          <div class="bottom-stat">
+            <span class="bottom-label">Candles:</span>
+            <span class="bottom-val" id="bCandleCount">—</span>
+          </div>
+          <div class="bottom-stat" style="margin-left:auto; color: var(--muted); font-size:10px;">
+            Data simulasi · Bukan saran investasi
+          </div>
+        </div>
+
+      </main>
+    </div><!-- .body -->
+  </div><!-- .app -->
+
+  <script>
+    window.onerror = function (msg, url, lineNo, columnNo, error) {
+      const el = document.getElementById('hName');
+      if (el) el.textContent = 'JS ERROR: ' + msg + ' @ ' + lineNo;
+      console.error(msg, error);
+      return false;
+    };
+    window.addEventListener('unhandledrejection', function (event) {
+      const el = document.getElementById('hName');
+      if (el) el.textContent = 'PROMISE ERROR: ' + event.reason;
+    });
+
+    // ─── State ─────────────────────────────────────────────────────────────────
+    const SYMBOLS = [{{ range .Stocks }}"{{.Symbol}}", {{ end }}];
+    let currentSymbol = "{{.DefaultSymbol}}";
+    let currentTimeframe = "1W";
+    let currentChartType = "candlestick";
+    let allCandles = [];
+    let chart, candleSeries, volumeSeries;
+    let stockMeta = {};
+    let pollTimer;
+
+    // ─── Chart Init ─────────────────────────────────────────────────────────────
+    function initChart() {
+      const container = document.getElementById('chart');
+      chart = LightweightCharts.createChart(container, {
+        autoSize: true,
+        layout: {
+          background: { type: 'solid', color: '#0d1117' },
+          textColor: '#8b949e',
+          fontSize: 11,
+          fontFamily: "'JetBrains Mono', monospace",
+        },
+        grid: {
+          vertLines: { color: '#161b22', style: 0 },
+          horzLines: { color: '#161b22', style: 0 },
+        },
+        crosshair: {
+          mode: LightweightCharts.CrosshairMode.Normal,
+          vertLine: { color: '#388bfd44', width: 1, style: 2, labelBackgroundColor: '#21262d' },
+          horzLine: { color: '#388bfd44', width: 1, style: 2, labelBackgroundColor: '#21262d' },
+        },
+        rightPriceScale: {
+          borderColor: '#21262d',
+          scaleMargins: { top: 0.08, bottom: 0.22 },
+        },
+        timeScale: {
+          borderColor: '#21262d',
+          timeVisible: true,
+          secondsVisible: false,
+          barSpacing: 8,
+          minBarSpacing: 3,
+          rightOffset: 8,
+        },
+        handleScale: { axisPressedMouseMove: { time: true, price: true } },
+        handleScroll: { mouseWheel: true, pressedMouseMove: true },
+      });
+
+      // Candlestick series
+      candleSeries = chart.addCandlestickSeries({
+        upColor: '#26a69a',
+        downColor: '#ef5350',
+        borderUpColor: '#26a69a',
+        borderDownColor: '#ef5350',
+        wickUpColor: '#26a69a',
+        wickDownColor: '#ef5350',
+        priceFormat: { type: 'price', precision: 0, minMove: 1 },
+      });
+
+      // Volume histogram
+      volumeSeries = chart.addHistogramSeries({
+        color: '#388bfd55',
+        priceFormat: { type: 'volume' },
+        priceScaleId: 'volume',
+        scaleMargins: { top: 0.82, bottom: 0 },
+      });
+
+      chart.priceScale('volume').applyOptions({
+        scaleMargins: { top: 0.82, bottom: 0 },
+      });
+
+      // Crosshair tooltip
+      chart.subscribeCrosshairMove(param => {
+        const ol = document.getElementById('chartOverlay');
+        if (!param || !param.time || !param.seriesData) {
+          ol.classList.remove('show');
+          return;
+        }
+        const d = param.seriesData.get(candleSeries);
+        if (!d) { ol.classList.remove('show'); return; }
+        ol.classList.add('show');
+        document.getElementById('olOpen').textContent = fmt(d.open);
+        document.getElementById('olHigh').textContent = fmt(d.high);
+        document.getElementById('olLow').textContent = fmt(d.low);
+        document.getElementById('olClose').textContent = fmt(d.close);
+        const vd = param.seriesData.get(volumeSeries);
+        document.getElementById('olVol').textContent = vd ? fmtVol(vd.value) : '—';
+      });
+
+      // Resize observer (fallback, although autoSize is enabled)
+      const ro = new ResizeObserver(() => {
+        if (container.clientWidth > 0 && container.clientHeight > 0) {
+          chart.applyOptions({ width: container.clientWidth, height: container.clientHeight });
+        }
+      });
+      ro.observe(container);
+      if (container.clientWidth > 0 && container.clientHeight > 0) {
+        chart.applyOptions({ width: container.clientWidth, height: container.clientHeight });
+      }
+    }
+
+    // ─── Load Candles ────────────────────────────────────────────────────────────
+    async function loadCandles(symbol) {
+      document.getElementById('loadingOverlay').style.display = 'flex';
+      try {
+        const res = await fetch(`/api/candles?symbol=${symbol}`);
+        allCandles = await res.json();
+        renderChart();
+        updateHeader(symbol);
+      } catch (e) { console.error(e); }
+      finally { document.getElementById('loadingOverlay').style.display = 'none'; }
+    }
+
+    function renderChart() {
+      const filtered = filterByTimeframe(allCandles, currentTimeframe);
+
+      // Build series data
+      let cData, vData;
+      if (currentChartType === 'candlestick') {
+        removeSeries();
+        candleSeries = chart.addCandlestickSeries({
+          upColor: '#26a69a', downColor: '#ef5350',
+          borderUpColor: '#26a69a', borderDownColor: '#ef5350',
+          wickUpColor: '#26a69a', wickDownColor: '#ef5350',
+          priceFormat: { type: 'price', precision: 0, minMove: 1 },
+        });
+        cData = filtered.map(c => ({ time: c.time, open: c.open, high: c.high, low: c.low, close: c.close }));
+        candleSeries.setData(cData);
+
+      } else if (currentChartType === 'bar') {
+        removeSeries();
+        candleSeries = chart.addBarSeries({
+          upColor: '#26a69a', downColor: '#ef5350',
+          priceFormat: { type: 'price', precision: 0, minMove: 1 },
+        });
+        cData = filtered.map(c => ({ time: c.time, open: c.open, high: c.high, low: c.low, close: c.close }));
+        candleSeries.setData(cData);
+
+      } else if (currentChartType === 'area') {
+        removeSeries();
+        candleSeries = chart.addAreaSeries({
+          lineColor: '#388bfd',
+          topColor: '#388bfd44',
+          bottomColor: '#388bfd05',
+          lineWidth: 2,
+          priceFormat: { type: 'price', precision: 0, minMove: 1 },
+        });
+        cData = filtered.map(c => ({ time: c.time, value: c.close }));
+        candleSeries.setData(cData);
+      }
+
+      // Volume
+      volumeSeries = chart.addHistogramSeries({
+        priceFormat: { type: 'volume' },
+        priceScaleId: 'volume',
+        scaleMargins: { top: 0.82, bottom: 0 },
+      });
+      chart.priceScale('volume').applyOptions({ scaleMargins: { top: 0.82, bottom: 0 } });
+      vData = filtered.map(c => ({
+        time: c.time,
+        value: c.volume,
+        color: c.close >= c.open ? '#26a69a55' : '#ef535055',
+      }));
+      volumeSeries.setData(vData);
+
+      chart.timeScale().fitContent();
+      document.getElementById('bCandleCount').textContent = filtered.length + ' candles';
+    }
+
+    function removeSeries() {
+      if (candleSeries) { try { chart.removeSeries(candleSeries); } catch (e) { } candleSeries = null; }
+      if (volumeSeries) { try { chart.removeSeries(volumeSeries); } catch (e) { } volumeSeries = null; }
+    }
+
+    function filterByTimeframe(candles, tf) {
+      if (tf === 'ALL') return candles;
+      const days = { '1D': 1, '1W': 7, '1M': 30, '3M': 90, '6M': 180, '1Y': 365 };
+      const d = days[tf] || 30;
+      const cutoff = (Date.now() / 1000) - d * 86400;
+      return candles.filter(c => c.time >= cutoff);
+    }
+
+    // ─── Header Update ────────────────────────────────────────────────────────────
+    function updateHeader(symbol) {
+      const s = stockMeta[symbol];
+      if (!s) return;
+      const up = s.changePct >= 0;
+      document.getElementById('hSym').textContent = s.symbol;
+      document.getElementById('hName').textContent = s.name;
+
+      const hPrice = document.getElementById('hPrice');
+      hPrice.textContent = fmt(s.lastPrice);
+      hPrice.className = 'ch-price ' + (up ? 'up' : 'down');
+
+      const sign = up ? '+' : '';
+      document.getElementById('hChgAmt').textContent = sign + fmt(s.change) + '  ';
+      const badge = document.getElementById('hChgBadge');
+      badge.textContent = sign + s.changePct.toFixed(2) + '%';
+      badge.className = 'ch-badge ' + (up ? 'up' : 'down');
+
+      document.getElementById('hOpen').textContent = fmt(s.open);
+      document.getElementById('hHigh').textContent = fmt(s.high);
+      document.getElementById('hLow').textContent = fmt(s.low);
+      document.getElementById('hVol').textContent = fmtVol(s.volume);
+      document.getElementById('hMktCap').textContent = s.marketCap;
+      document.getElementById('hPE').textContent = s.peRatio > 0 ? s.peRatio.toFixed(1) + 'x' : 'N/A';
+      document.getElementById('h52H').textContent = fmt(s.weekHigh52);
+      document.getElementById('h52L').textContent = fmt(s.weekLow52);
+    }
+
+    // ─── Live Polling ─────────────────────────────────────────────────────────────
+    async function pollLatest() {
+      try {
+        const res = await fetch('/api/latest');
+        const data = await res.json();
+        stockMeta = {};
+        (data.stocks || []).forEach(s => { stockMeta[s.symbol] = s; });
+
+        // Update sidebar & ticker
+        (data.stocks || []).forEach(s => {
+          const up = s.changePct >= 0;
+          const cls = up ? 'up' : 'down';
+          const sign = up ? '+' : '';
+          const arrow = up ? '▲' : '▼';
+
+          // sidebar price
+          const sip = document.getElementById('sip-' + s.symbol);
+          if (sip) { sip.textContent = fmt(s.lastPrice); sip.className = 'si-price ' + cls; }
+          const sic = document.getElementById('sic-' + s.symbol);
+          if (sic) { sic.textContent = sign + s.changePct.toFixed(2) + '%'; sic.className = 'si-chg ' + cls; }
+
+          // ticker
+          ['tp-', 'tp2-'].forEach(p => {
+            const el = document.getElementById(p + s.symbol);
+            if (el) { el.textContent = fmt(s.lastPrice); el.className = 'ticker-price ' + cls; }
+          });
+          ['tc-', 'tc2-'].forEach(p => {
+            const el = document.getElementById(p + s.symbol);
+            if (el) { el.textContent = arrow + ' ' + Math.abs(s.changePct).toFixed(2) + '%'; el.className = 'ticker-chg ' + cls; }
+          });
+        });
+
+        // Update chart last candle
+        if (data.candles && data.candles[currentSymbol] && candleSeries) {
+          const c = data.candles[currentSymbol];
+          const bar = currentChartType === 'area'
+            ? { time: c.time, value: c.close }
+            : { time: c.time, open: c.open, high: c.high, low: c.low, close: c.close };
+          try { candleSeries.update(bar); } catch (e) { }
+          if (volumeSeries) {
+            try { volumeSeries.update({ time: c.time, value: c.volume, color: c.close >= c.open ? '#26a69a55' : '#ef535055' }); } catch (e) { }
+          }
+        }
+
+        updateHeader(currentSymbol);
+
+        // Bottom bar time
+        const now = new Date();
+        document.getElementById('bTime').textContent = now.toLocaleTimeString('id-ID');
+        document.getElementById('lastUpdateTime').textContent = 'Updated ' + now.toLocaleTimeString('id-ID');
+
+        // Simulate IDX composite movement
+        const base = 7342.18;
+        const jitter = (Math.random() - 0.5) * 10;
+        const idxVal = (base + jitter).toFixed(2);
+        const idxPct = ((jitter / base) * 100).toFixed(2);
+        document.getElementById('bIdxComp').textContent = Number(idxVal).toLocaleString('id-ID', { minimumFractionDigits: 2 });
+        const bic = document.getElementById('bIdxChg');
+        bic.textContent = (jitter >= 0 ? '+' : '') + idxPct + '%';
+        bic.className = jitter >= 0 ? 'up' : 'down';
+
+      } catch (e) { console.error(e); }
+    }
+
+    // ─── Controls ────────────────────────────────────────────────────────────────
+    function selectStock(sym) {
+      if (sym === currentSymbol) return;
+      currentSymbol = sym;
+
+      // Update sidebar active
+      document.querySelectorAll('.stock-item').forEach(el => el.classList.remove('active'));
+      const si = document.getElementById('si-' + sym);
+      if (si) si.classList.add('active');
+
+      loadCandles(sym);
+    }
+
+    function setTimeframe(tf) {
+      currentTimeframe = tf;
+      document.querySelectorAll('.tf-btn').forEach(b => {
+        b.classList.toggle('active', b.textContent.trim() === tf);
+      });
+      renderChart();
+    }
+
+    function setChartType(type, element) {
+      currentChartType = type;
+      document.querySelectorAll('.ct-btn').forEach(b => b.classList.remove('active'));
+      if (element) {
+        element.classList.add('active');
+      } else if (window.event && window.event.currentTarget) {
+        window.event.currentTarget.classList.add('active');
+      }
+      renderChart();
+    }
+
+    // ─── Formatters ──────────────────────────────────────────────────────────────
+    function fmt(n) {
+      return Number(n).toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+    }
+    function fmtVol(n) {
+      if (n >= 1e9) return (n / 1e9).toFixed(1) + 'B';
+      if (n >= 1e6) return (n / 1e6).toFixed(1) + 'M';
+      if (n >= 1e3) return (n / 1e3).toFixed(0) + 'K';
+      return n.toFixed(0);
+    }
+
+    // ─── Bootstrap ───────────────────────────────────────────────────────────────
+    (async () => {
+      initChart();
+
+      // Pre-load meta
+      try {
+        const res = await fetch('/api/latest');
+        const data = await res.json();
+        (data.stocks || []).forEach(s => { stockMeta[s.symbol] = s; });
+      } catch (e) { }
+
+      await loadCandles(currentSymbol);
+
+      // Poll every 1 second
+      pollLatest();
+      setInterval(pollLatest, 1000);
+    })();
+  </script>
+</body>
+
+</html>
